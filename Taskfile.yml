@@ -11,8 +11,8 @@ tasks:
       - task: ssh_key
       - task: display_ssh_key
       - task: home_manager_config
-      - task: git_crypt
       - task: home_manager
+      - task: git_crypt
       - task: switch
       - task: set_shell
 
