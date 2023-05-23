@@ -1,0 +1,110 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  WITH_NIX: env PATH="$HOME/.nix-profile/bin:$PATH"
+
+tasks:
+  default:
+    cmds:
+      - task: ssh_key
+      - task: display_ssh_key
+      - task: home_manager_config
+      - task: git_crypt
+      - task: home_manager
+      - task: switch
+      - task: set_shell
+
+  ssh_key:
+    vars:
+      SSH_DIR: $HOME/.ssh
+    cmds:
+      - mkdir -p {{.SSH_DIR}}
+      - cd {{.SSH_DIR}} && ssh-keygen -t ed25519 -f id_ed25519 -N "" && ls
+    status:
+      - test -f {{.SSH_DIR}}/id_ed25519
+
+  display_ssh_key:
+    vars:
+      SSH_DIR: $HOME/.ssh
+    cmds:
+      - echo add your public key to github https://github.com/settings/keys
+      - cat {{.SSH_DIR}}/id_ed25519.pub
+      - echo  press ENTER when ok
+      - read
+    silent: true
+    status:
+      - ssh -T git@github.com 2>&1 | grep success
+    
+  nix:
+    cmds:
+      - sh <(curl -L https://nixos.org/nix/install) --no-daemon
+      - echo ". $HOME/.nix-profile/etc/profile.d/nix.sh" >> ~/.bashrc
+    status:
+      - test -d $HOME/.nix-profile
+
+  home_manager:
+    deps: 
+      - nix
+    vars:
+      NIX: $HOME/.nix-profile
+    cmds:
+      - >
+        PATH=$HOME/.nix-profile/bin:$PATH nix-channel --add https://github.com/nix-community/home-manager/archive/master.tar.gz home-manager
+      - >
+        PATH=$HOME/.nix-profile/bin:$PATH nix-channel --update
+      - >
+        PATH=$HOME/.nix-profile/bin:$PATH nix-shell '<home-manager>' -A install
+    status:
+      - test -f {{.NIX}}/bin/home-manager
+
+  home_manager_config:
+    cmds:
+      - mkdir -p $HOME/.config/
+      - >
+        cd $HOME/.config && git clone git@github.com:gverger/home-managed.git home-manager
+    status:
+      - test -d $HOME/.config/home-manager/.git
+
+  switch:
+    cmds:
+      - PATH=$HOME/.nix-profile/bin:$PATH home-manager switch
+
+  git_crypt:
+    cmds:
+      - >
+        echo "Get the encryption key for secrets in Bitwarden: home-manager"
+      - echo "And save it in the open file that will open"
+      - read
+      - vim /tmp/key.base64
+      - base64 --decode /tmp/key.base64 > /tmp/key
+      - >
+        cd $HOME/.config/home-manager && {{.WITH_NIX}} git-crypt unlock /tmp/key
+      - task: switch
+    status:
+      - test -f $HOME/.config/home-manager/.git/git-crypt/keys/default
+    interactive: true
+    silent: true
+
+  set_shell:
+    cmds:
+      - sudo bash -c "echo $HOME/.nix-profile/bin/zsh >> /etc/shells"
+      - chsh $USER -s $HOME/.nix-profile/bin/zsh
+    status:
+      - cat /etc/shells | grep '.nix-profile/bin/zsh'
+
+  neovim:
+    cmds:
+      - |
+        sh -c 'curl -fLo "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim --create-dirs \
+                                                               https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+    status:
+      - test -f $HOME/.local/share/nvim/site/autoload/plug.vim
+
+  tmux:
+    cmds:
+      - |
+        git clone https://github.com/tmux-plugins/tpm $HOME/.tmux/plugins/tpm
+    status:
+      - test -d $HOME/.tmux/plugins/tmp
