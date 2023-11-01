@@ -10,11 +10,8 @@ tasks:
     cmds:
       - task: ssh_key
       - task: display_ssh_key
-      - task: home_manager_config
-      - task: home_manager
-      - task: git_crypt
-      - task: switch
-      - task: set_shell
+      - task: dotfiles_git
+        #      - task: set_shell
       - task: tmux
       - task: neovim
 
@@ -38,56 +35,17 @@ tasks:
     silent: true
     status:
       - ssh -T git@github.com 2>&1 | grep success
-    
-  nix:
-    cmds:
-      - sh <(curl -L https://nixos.org/nix/install) --no-daemon
-      - echo ". $HOME/.nix-profile/etc/profile.d/nix.sh" >> ~/.bashrc
-    status:
-      - test -d $HOME/.nix-profile
 
-  home_manager:
-    deps: 
-      - nix
-    vars:
-      NIX: $HOME/.nix-profile
+  devbox:
     cmds:
-      - >
-        PATH=$HOME/.nix-profile/bin:$PATH nix-channel --add https://github.com/nix-community/home-manager/archive/master.tar.gz home-manager
-      - >
-        PATH=$HOME/.nix-profile/bin:$PATH nix-channel --update
-      - >
-        PATH=$HOME/.nix-profile/bin:$PATH nix-shell '<home-manager>' -A install
-    status:
-      - test -f {{.NIX}}/bin/home-manager
+      - curl -fsSL https://get.jetpack.io/devbox | bash
 
-  home_manager_config:
+  dotfiles_git:
     cmds:
-      - mkdir -p $HOME/.config/
-      - >
-        cd $HOME/.config && git clone git@github.com:gverger/home-managed.git home-manager
+      - git clone --bare https://github.com/gverger/home-dotfiles.git $HOME/.dotfiles
+      - git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME checkout
     status:
-      - test -d $HOME/.config/home-manager/.git
-
-  switch:
-    cmds:
-      - PATH=$HOME/.nix-profile/bin:$PATH home-manager switch
-
-  git_crypt:
-    cmds:
-      - >
-        echo "Get the encryption key for secrets in Bitwarden: home-manager"
-      - echo "And save it in the open file that will open"
-      - read
-      - vim /tmp/key.base64
-      - base64 --decode /tmp/key.base64 > /tmp/key
-      - >
-        cd $HOME/.config/home-manager && {{.WITH_NIX}} git-crypt unlock /tmp/key
-      - task: switch
-    status:
-      - test -f $HOME/.config/home-manager/.git/git-crypt/keys/default
-    interactive: true
-    silent: true
+      - test -d $HOME/.dotfiles
 
   set_shell:
     cmds:
