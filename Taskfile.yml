@@ -47,6 +47,7 @@ tasks:
   dotfiles_git:
     cmds:
       - git clone --bare git@github.com:gverger/home-dotfiles.git $HOME/.dotfiles
+      - git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME config status.showUntrackedFiles no
       - git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME checkout
     status:
       - test -d $HOME/.dotfiles
