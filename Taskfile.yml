@@ -11,7 +11,8 @@ tasks:
       - task: ssh_key
       - task: display_ssh_key
       - task: dotfiles_git
-        #      - task: set_shell
+      - task: devbox
+      - task: set_shell
       - task: tmux
       - task: neovim
 
@@ -39,20 +40,25 @@ tasks:
   devbox:
     cmds:
       - curl -fsSL https://get.jetpack.io/devbox | bash
+      - devbox global install
+    status:
+      - test -f /usr/local/bin/devbox
 
   dotfiles_git:
     cmds:
-      - git clone --bare https://github.com/gverger/home-dotfiles.git $HOME/.dotfiles
+      - git clone --bare git@github.com:gverger/home-dotfiles.git $HOME/.dotfiles
       - git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME checkout
     status:
       - test -d $HOME/.dotfiles
 
   set_shell:
+    vars:
+      ZSH_HOME: $HOME/.local/share/devbox/global/default/.devbox/nix/profile/default/bin
     cmds:
-      - sudo bash -c "echo $HOME/.nix-profile/bin/zsh >> /etc/shells"
-      - chsh $USER -s $HOME/.nix-profile/bin/zsh
+      - sudo bash -c "echo {{.ZSH_HOME}}/zsh >> /etc/shells"
+      - chsh $USER -s {{.ZSH_HOME}}/zsh
     status:
-      - cat /etc/shells | grep '.nix-profile/bin/zsh'
+      - cat /etc/shells | grep "{{.ZSH_HOME}}/zsh"
 
   neovim:
     cmds:
@@ -67,4 +73,4 @@ tasks:
       - |
         git clone https://github.com/tmux-plugins/tpm $HOME/.tmux/plugins/tpm
     status:
-      - test -d $HOME/.tmux/plugins/tmp
+      - test -d $HOME/.tmux/plugins/tpm
